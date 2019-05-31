@@ -18,7 +18,7 @@ async function fetchAndSaveEmails() {
   
 //*
   // Gets emails
-  let emails = await getEmails2(auth, 300);
+  let emails = await getEmails(auth, 300);
 
   // Save emails to json file
   console.log("Writing emails to file...");
@@ -83,43 +83,12 @@ async function getLabelList(auth) {
       from: '',
       subject: '',
       body: '',
+      bodyClean: ''
     },
   ]
 */
-async function getEmails( auth, numEmails ) {
-  const gmail = google.gmail({version: 'v1', auth});
-  let result = []; 
-  
-  // Fetch email ids
-  console.log("Fetching email IDs...");
-  await gmail.users.messages.list( { userId: 'me', maxResults: numEmails, q: 'label:Finance' } )
-  .then( async (resp) => {
-    console.log("Fetching email content by IDs...");
-    for(let elemId of resp.data.messages) {
 
-      // Fetch email by id
-      await gmail.users.messages.get( { userId: 'me', id: elemId.id} )              
-      .then( (res) => { 
-        let e = {};
-        e.labels = getLabels(res);
-        e.from = getFrom(res);
-        e.subject = getSubject(res);
-        e.body = removeHTML(getBody(res));
-        result.push(e);     
-        //result.push(res);      
-      
-      })
-      .catch( (err) => console.log('Couldnt fetch this email by ID\n' + err));
-    }
-  })
-  .catch( (err) => console.log("Could not fetch email ids\n" + err) );
-
-  return result;
-}
-
-// -----------------------------------------------------------------
-
-async function getEmails2( auth, numEmails, query = 'category:primary' ) {
+async function getEmails( auth, numEmails, query = 'category:primary' ) {
   const gmail = google.gmail({version: 'v1', auth});
   let result = []; 
   let messageIds = [];
