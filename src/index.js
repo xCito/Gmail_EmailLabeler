@@ -18,7 +18,7 @@ async function fetchAndSaveEmails() {
   
 //*
   // Gets emails
-  let emails = await getEmails2(auth, 30);
+  let emails = await getEmails2(auth, 300);
 
   // Save emails to json file
   console.log("Writing emails to file...");
@@ -226,33 +226,29 @@ function getSubject( gmailRespEmail ) {
  */
 function getBody( gmailRespEmail ) {
   let result = '';
-  try {
-    if(gmailRespEmail.data.payload.body.data) 
-    { 
-      result += Buffer.from(gmailRespEmail.data.payload.body.data, 'base64').toString();
+
+  if(gmailRespEmail.data.payload.body.data) { 
+    let firstBodyAttr = gmailRespEmail.data.payload.body.data;
+    result += Buffer.from(firstBodyAttr, 'base64').toString();
+  } 
+
+  let searchForBodyData = (partsObjElem) => {
+    if(partsObjElem.body.data) {
+      let data = partsObjElem.body.data;
+      result += Buffer.from(data, 'base64').toString();
     } 
-    else if(gmailRespEmail.data.payload.parts) 
-    {
-      for(let p of gmailRespEmail.data.payload.parts) {
-        if(p.body.data) {
-          result += Buffer.from(p.body.data, 'base64');
-        } 
-        else if(p.parts) {
-          for(let innerPart of p.parts) {
-            if(innerPart.body.data !== undefined) {
-              result += Buffer.from(innerPart.body.data, 'base64');
-            }
-          } 
-        }
-      }
+
+    if(partsObjElem.parts) {
+      partsObjElem.parts.forEach((v, i, arr) => searchForBodyData(v));
     }
   }
-  catch(err) {
-    console.log(err);
-    //console.log(JSON.stringify(gmailRespEmail.data, null, 2));
-  }
-  return (result === '') ? '__Not Found' : result;
 
+  if(gmailRespEmail.data.payload.parts) {
+    let partsArr = gmailRespEmail.data.payload.parts;
+    partsArr.forEach((elem) => searchForBodyData(elem));
+  }
+
+  return (result === '') ? '__Not Found' : result;
 }
 
 // -----------------------------------------------------------------
@@ -279,9 +275,10 @@ function removeHTML( bodyStr ) {
   let styleRegex = /<style.*>[\w\s\W\d_]+<\/style>/gi;
   let htmlRegex = /<\/?[a-zA-Z0-9\W_]+?\/?>/gi;
   let extraSpaceRegex = /\s{2,}/g;
-  let htmlEntities = /&[\w]+;/g;
+  let htmlEntities = /&[#\w\d]+;/g;
   let wordAndNum = /(?=\w*[a-z])(?=\w*[0-9])\w+/g;
-  
+  // consider removing links
+
   let temp = bodyStr.replace(/[\n\r]/g, ' ');     // remove all new lines
   temp = temp.replace(styleRegex, '');            // remove style tags and its contents
   temp = temp.replace(htmlRegex, '');             // remove html tags
