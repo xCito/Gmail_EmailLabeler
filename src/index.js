@@ -1,28 +1,81 @@
 const {getAuth, google} = require('./gmailAuth');
-const WordPos = require('wordpos');
+const fs = require('fs');
 const auth = getAuth();
 
-const wordpos = new WordPos();
-let ignoreSet = new Set(['the', ' ', 'a', 'it', 'has',]);
+
+//////////////////////////////////////////////////////////////////////
+
+
+fetchAndSaveEmails();
+
+
+
+//////////////////////////////////////////////////////////////////////
+
+
+async function fetchAndSaveEmails() {
+  console.log("START\n");
+  
+//*
+  // Gets emails
+  let emails = await getEmails2(auth, 30);
+
+  // Save emails to json file
+  console.log("Writing emails to file...");
+  fs.writeFileSync('Emails.json', JSON.stringify(emails, null, 2), (err) => {
+    console.log("It didnt work :( 1");
+    console.log(err);
+  });
+//*/
+
 /*
-  Makes a fetch request to retrieve a list of 
-  labels from the GMAIL API
+  let labels = await getLabelList(auth);
+  for(let lab of labels) {
+    console.log(lab.id + ' = ' + lab.name);
+  }
+
+
+//*/
+
+  console.log("END\n");
+}
+
+
+// -----------------------------------------------------------------
+
+
+///////////////////////////////////////////////////
+//    Getting the email from GMAIL using API     //
+//        Extracting out of API response         //
+///////////////////////////////////////////////////
+
+/** 
+*  Makes a fetch request to retrieve a list of 
+*  labels from the GMAIL API
 */
-function getLabelList(auth) {
+async function getLabelList(auth) {
   const gmail = google.gmail({version: 'v1', auth});
 
-  let promise = gmail.users.labels.list({userId: 'me'}); 
-  promise.then( (res) => {
+  return await gmail.users.labels.list({userId: 'me'})
+  .then( (res) => {
     const labels = res.data.labels;
-    labels.forEach((label) => console.log(label) );
-  });
-  promise.catch((err) => {
+    return labels;
+  })
+  .catch((err) => {
     console.log("Didnt work...");
     console.log(err);  
   }); 
 }
 
+// -----------------------------------------------------------------
+
 /*
+  Gets the emails from the PRIMARY category of your gmail. First
+  by fetching the email Ids of the emails in that category, then
+  fetching the email content by id.
+
+  Only Label, From, Subject, and Body(modified) fields are returned.
+
   Returns: {Array of Object}
   [
     {
@@ -33,48 +86,15 @@ function getLabelList(auth) {
     },
   ]
 */
-// async function getEmails2( auth, numEmails ) {   NOT GOOD IDEA
-//   const gmail = google.gmail({version: 'v1', auth});
-
-//   // Fetch email ids
-//   return await gmail.users.messages.list( { userId: 'me', maxResults: numEmails, q: 'category:primary' } )
-//   .then( (resp) => {
-
-//     // Collect all fetch promises
-//     let allPromises = [];
-//     for(let elemId of resp.data.messages) {
-//       let p = gmail.users.messages.get( { userId: 'me', id: elemId.id} );
-//       allPromises.push( p );
-//     }
-//     let d = gmail.users.messages.get( { userId: 'me', id: 1} );
-//     allPromises.push( d );
-
-//     return Promise.all( allPromises );
-//   })  // All resolved fetches come here
-//   .then( (arrRes) => {
-//     let result = [];
-//     for(let r of arrRes) {
-//       let e = {
-//         labels   : getLabels(r),
-//         from     : getFrom(r),
-//         subject  : getSubject(r),
-//         body     : removeHTML(getBody(r))
-//       };
-//       result.push(e);
-//     }
-//     return result;
-//   })
-//   .catch((err) => console.log('something didnt work' + err));
-// }
-
-
 async function getEmails( auth, numEmails ) {
   const gmail = google.gmail({version: 'v1', auth});
   let result = []; 
   
   // Fetch email ids
-  await gmail.users.messages.list( { userId: 'me', maxResults: numEmails, q: 'category:primary' } )
+  console.log("Fetching email IDs...");
+  await gmail.users.messages.list( { userId: 'me', maxResults: numEmails, q: 'label:Finance' } )
   .then( async (resp) => {
+    console.log("Fetching email content by IDs...");
     for(let elemId of resp.data.messages) {
 
       // Fetch email by id
@@ -85,7 +105,9 @@ async function getEmails( auth, numEmails ) {
         e.from = getFrom(res);
         e.subject = getSubject(res);
         e.body = removeHTML(getBody(res));
-        result.push(e);
+        result.push(e);     
+        //result.push(res);      
+      
       })
       .catch( (err) => console.log('Couldnt fetch this email by ID\n' + err));
     }
@@ -95,66 +117,71 @@ async function getEmails( auth, numEmails ) {
   return result;
 }
 
-/**
- * @param {Object} emails 
- */
-function groupByLabel( emails ) {
-  let groups = {};
-  
-  for(let email of emails) {
-    for(let label of email.labels) {
-      if(!groups[label]) {
-        groups[label] = [email];
-      } else {
-        groups[label].push(email);
+// -----------------------------------------------------------------
+
+async function getEmails2( auth, numEmails, query = 'category:primary' ) {
+  const gmail = google.gmail({version: 'v1', auth});
+  let result = []; 
+  let messageIds = [];
+  let options = { userId: 'me', maxResults: numEmails, q: query };
+  let counter = 0;
+
+  let firstCallDone = false;
+  let nextToken = undefined;
+
+  console.log("Fetching message ids...");
+  // Fetch email ids
+  do {
+    if(firstCallDone) {
+      options['pageToken'] = nextToken;
+    }
+    await gmail.users.messages.list(options)
+    .then(resp => {
+      for(let obj of resp.data.messages) {
+        messageIds.push(obj.id);
       }
-    }
+      nextToken = resp.data.nextPageToken;
+      firstCallDone = true;
+      console.log("\treceived ids...");
+    })
+    .catch( err => console.log(err));
+
+    if(messageIds.length >= numEmails) 
+      nextToken = undefined;
+
+  } while(nextToken);
+
+  console.log("Fetching emails by ids...");
+  for(let id of messageIds) {
+    
+    // Fetch email by id
+    gmail.users.messages.get( { userId: 'me', id: id} )              
+    .then( (res) => { 
+      let e = {};
+      e.labels = getLabels(res);
+      e.from = getFrom(res);
+      e.subject = getSubject(res);
+      e.body = getBody(res);
+      e.bodyClean = removeHTML(e.body);
+      result.push(e);    
+      console.log("\tRecieved email.." + counter);
+      counter++;    
+      //console.log(JSON.stringify(res, null, 2));
+    })
+    .catch( (err) => console.log('Couldnt fetch this email by ID\n' + err));
+    await sleep(20);
   }
-  return groups;
+  await sleep(1000);
+  return result;
 }
 
-function countEveryWordOccurence( string ) {
-  let counter = {};
-  let wordArr = string.split(/[\s\W\d]+/gi);
-  console.log(wordArr);
-  for(let word of wordArr) {
-    let wordLower = word.toLowerCase();
-    if(counter[wordLower]) {
-      counter[wordLower]++;
-    } else {
-      counter[wordLower] = 1;
-    }
-  }
-
-  return counter; 
-}
-
-////////////////////////////////////////////////////////////////
-
-async function start() {
-  console.log("START\n");
-  let emails = await getEmails( auth, 10 );
-  groupByLabel(emails);
-
-  console.log(emails[1].body + "\n\n" );
-  wordpos.getNouns(emails[1].body, (result) => {
-    console.log(result);
+function sleep(ms){
+  return new Promise(resolve=>{
+      setTimeout(resolve,ms)
   });
-  //console.log("---> " + emails[0].body);
-  // let output = countEveryWordOccurence(emails[1].body);
-  // console.log(output);
-
-
-  console.log("END\n");
 }
+// -----------------------------------------------------------------
 
-
-////////////////////////////////////////////////////////////////
-
-start();
-
-////////////////////////////////////////////////////////////////
- 
 /**
  * Searches for the From field of email
  * @param {Object} gmailRespEmail 
@@ -169,6 +196,8 @@ function getFrom( gmailRespEmail ) {
   return '__Not Found';
 }
 
+// -----------------------------------------------------------------
+
 /**
  * Searches for the Subject field of email
  * @param {Object} gmailRespEmail 
@@ -176,11 +205,17 @@ function getFrom( gmailRespEmail ) {
  */
 function getSubject( gmailRespEmail ) {
   for(let h of gmailRespEmail.data.payload.headers) {
-    if(h.name === 'Subject')
+    if(h.name === 'Subject') {
+      if(h.value === 'Updated Excel sheet') {
+        console.log(JSON.stringify(gmailRespEmail.data, null, 2));
+      }
       return h.value;
+    }
   }
   return '__Not Found'; 
 }
+
+// -----------------------------------------------------------------
 
 /**
  * Gets the body portion(s) out of GMAIL API
@@ -190,19 +225,37 @@ function getSubject( gmailRespEmail ) {
  *                  '__Not Found'
  */
 function getBody( gmailRespEmail ) {
-  if(gmailRespEmail.data.payload.body.data) {
-    return Buffer.from(gmailRespEmail.data.payload.body.data, 'base64').toString();
-  } else if(gmailRespEmail.data.payload.parts) {
-    let result = '';
-    for(let p of gmailRespEmail.data.payload.parts) {
-      if(p.body.data) {
-        result += Buffer.from(p.body.data, 'base64');
+  let result = '';
+  try {
+    if(gmailRespEmail.data.payload.body.data) 
+    { 
+      result += Buffer.from(gmailRespEmail.data.payload.body.data, 'base64').toString();
+    } 
+    else if(gmailRespEmail.data.payload.parts) 
+    {
+      for(let p of gmailRespEmail.data.payload.parts) {
+        if(p.body.data) {
+          result += Buffer.from(p.body.data, 'base64');
+        } 
+        else if(p.parts) {
+          for(let innerPart of p.parts) {
+            if(innerPart.body.data !== undefined) {
+              result += Buffer.from(innerPart.body.data, 'base64');
+            }
+          } 
+        }
       }
     }
-
-    return (result === '') ? '__Not Found' : result;
   }
+  catch(err) {
+    console.log(err);
+    //console.log(JSON.stringify(gmailRespEmail.data, null, 2));
+  }
+  return (result === '') ? '__Not Found' : result;
+
 }
+
+// -----------------------------------------------------------------
 
 /**
  * Gets the labels associated with email
@@ -213,6 +266,7 @@ function getLabels( gmailRespEmail ) {
   return gmailRespEmail.data.labelIds;
 }
 
+// -----------------------------------------------------------------
 
 /*
   Removes the everything between the style tags
@@ -221,14 +275,20 @@ function getLabels( gmailRespEmail ) {
   bodyStr {String}
 */
 function removeHTML( bodyStr ) {
-  let styleRegex = /<style.*>[\w\n\s\W\d]+<\/style>/gi;
-  let htmlRegex = /<\/?(?:[a-zA-Z0-9$+\'\s%@=|!\]\[)(#\"?,_/.;:&-]+)?\/?>/gi;
-  let extraLineRegex = /[\n\r]{3,}/g;
-  let extraSpaceRegex = /\s{4,}/g;
+
+  let styleRegex = /<style.*>[\w\s\W\d_]+<\/style>/gi;
+  let htmlRegex = /<\/?[a-zA-Z0-9\W_]+?\/?>/gi;
+  let extraSpaceRegex = /\s{2,}/g;
+  let htmlEntities = /&[\w]+;/g;
+  let wordAndNum = /(?=\w*[a-z])(?=\w*[0-9])\w+/g;
   
-  let temp = bodyStr.replace(styleRegex, '');     // remove style tags and its contents
+  let temp = bodyStr.replace(/[\n\r]/g, ' ');     // remove all new lines
+  temp = temp.replace(styleRegex, '');            // remove style tags and its contents
   temp = temp.replace(htmlRegex, '');             // remove html tags
-  temp = temp.replace(extraLineRegex, '\n\n');    // shrink excessive new lines
-  return temp.replace(extraSpaceRegex, ' ');      // shrink excessive spaces
+  temp = temp.replace(htmlEntities, '');          // remove html entities
+  temp = temp.replace(extraSpaceRegex, ' ');      // shrink excessive spaces
+  temp = temp.replace(wordAndNum, '');
+
+  return temp;
 }
 
