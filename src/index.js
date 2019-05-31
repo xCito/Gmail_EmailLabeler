@@ -130,8 +130,8 @@ async function getEmails( auth, numEmails, query = 'category:primary' ) {
       e.labels = getLabels(res);
       e.from = getFrom(res);
       e.subject = getSubject(res);
-      e.body = getBody(res);
-      e.bodyClean = removeHTML(e.body);
+      //e.body = getBody(res);
+      e.bodyClean = removeHTML(getBody(res));
       result.push(e);    
       console.log("\tRecieved email.." + counter);
       counter++;    
