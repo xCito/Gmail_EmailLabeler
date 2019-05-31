@@ -18,7 +18,7 @@ async function fetchAndSaveEmails() {
   
 //*
   // Gets emails
-  let emails = await getEmails(auth, 300);
+  let emails = await getEmails(auth, 2000);
 
   // Save emails to json file
   console.log("Writing emails to file...");
@@ -174,12 +174,9 @@ function getFrom( gmailRespEmail ) {
  */
 function getSubject( gmailRespEmail ) {
   for(let h of gmailRespEmail.data.payload.headers) {
-    if(h.name === 'Subject') {
-      if(h.value === 'Updated Excel sheet') {
-        console.log(JSON.stringify(gmailRespEmail.data, null, 2));
-      }
+    if(h.name === 'Subject') 
       return h.value;
-    }
+    
   }
   return '__Not Found'; 
 }
