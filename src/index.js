@@ -124,7 +124,7 @@ async function getEmails( auth, numEmails, query = 'category:primary' ) {
   for(let id of messageIds) {
     
     // Fetch email by id
-    gmail.users.messages.get( { userId: 'me', id: id} )              
+    gmail.users.messages.get( {userId: 'me', id: id} )              
     .then( (res) => { 
       let e = {};
       e.labels = getLabels(res);
