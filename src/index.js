@@ -124,7 +124,7 @@ async function getEmails( auth, numEmails, query = 'category:primary' ) {
   for(let id of messageIds) {
     
     // Fetch email by id
-    gmail.users.messages.get( { userId: 'me', id: id} )              
+    gmail.users.messages.get( {userId: 'me', id: id} )              
     .then( (res) => { 
       let e = {};
       e.labels = getLabels(res);
@@ -250,7 +250,7 @@ function removeHTML( bodyStr ) {
   temp = temp.replace(htmlRegex, '');             // remove html tags
   temp = temp.replace(htmlEntities, '');          // remove html entities
   temp = temp.replace(extraSpaceRegex, ' ');      // shrink excessive spaces
-  temp = temp.replace(wordAndNum, '');
+  temp = temp.replace(wordAndNum, '');            // remove sequences of 
 
   return temp;
 }
