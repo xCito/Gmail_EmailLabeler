@@ -18,7 +18,7 @@ async function fetchAndSaveEmails() {
   
 //*
   // Gets emails
-  let emails = await getEmails(auth, 2000);
+  let emails = await getEmails(auth, 4000);
 
   // Save emails to json file
   console.log("Writing emails to file...");
@@ -162,7 +162,7 @@ function getFrom( gmailRespEmail ) {
     if(h.name === 'From')
       return h.value;
   }
-  return '__Not Found';
+  return '__NotFound';
 }
 
 // -----------------------------------------------------------------
@@ -178,7 +178,7 @@ function getSubject( gmailRespEmail ) {
       return h.value;
     
   }
-  return '__Not Found'; 
+  return '__NotFound'; 
 }
 
 // -----------------------------------------------------------------
@@ -214,7 +214,7 @@ function getBody( gmailRespEmail ) {
     partsArr.forEach((elem) => searchForBodyData(elem));
   }
 
-  return (result === '') ? '__Not Found' : result;
+  return (result === '') ? '__NotFound' : result;
 }
 
 // -----------------------------------------------------------------
@@ -250,7 +250,8 @@ function removeHTML( bodyStr ) {
   temp = temp.replace(htmlRegex, '');             // remove html tags
   temp = temp.replace(htmlEntities, '');          // remove html entities
   temp = temp.replace(extraSpaceRegex, ' ');      // shrink excessive spaces
-  temp = temp.replace(wordAndNum, '');            // remove sequences of 
+  temp = temp.replace(wordAndNum, '');            // remove sequences of letternum mix
+
 
   return temp;
 }
