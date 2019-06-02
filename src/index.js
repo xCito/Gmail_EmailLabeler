@@ -162,7 +162,7 @@ function getFrom( gmailRespEmail ) {
     if(h.name === 'From')
       return h.value;
   }
-  return '__NotFound';
+  return '__FromNotFound';
 }
 
 // -----------------------------------------------------------------
@@ -178,7 +178,7 @@ function getSubject( gmailRespEmail ) {
       return h.value;
     
   }
-  return '__NotFound'; 
+  return '__SubjectNotFound'; 
 }
 
 // -----------------------------------------------------------------
@@ -214,7 +214,7 @@ function getBody( gmailRespEmail ) {
     partsArr.forEach((elem) => searchForBodyData(elem));
   }
 
-  return (result === '') ? '__NotFound' : result;
+  return (result === '') ? '__BodyNotFound' : result;
 }
 
 // -----------------------------------------------------------------
