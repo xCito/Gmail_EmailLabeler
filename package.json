@@ -1,0 +1,26 @@
+{
+  "name": "gmailproject",
+  "version": "1.0.0",
+  "description": "Retrieves *emails* and the *custom labels* from GMAIL account.\r Looking at emails with the same label, finds what makes them similar.",
+  "main": "index.js",
+  "dependencies": {
+    "googleapis": "^45.0.0",
+    "natural": "^0.6.3",
+    "open": "^7.0.0",
+    "wordpos": "^1.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xCito/Gmail_EmailLabeler.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/xCito/Gmail_EmailLabeler/issues"
+  },
+  "homepage": "https://github.com/xCito/Gmail_EmailLabeler#readme"
+}

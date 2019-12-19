@@ -48,7 +48,7 @@ function getWordDocumentFrequency( arrayOfStringArr ) {
   let docFreq = {};
   arrayOfStringArr.forEach( arr => words.push(...arr)); // flat()
   words = [...new Set(words)];                          // remove duplicates
-  console.log(JSON.stringify(words, null, 2));
+  //console.log(JSON.stringify(words, null, 2));
 
   for(let word of words) { // forEach word
     for(let doc of arrayOfStringArr) {           // forEach doc in documents
